@@ -21,10 +21,19 @@ pub fn player_input(gs: &mut State, ctx: &mut Rltk) {
     match ctx.key {
         None => {}
         Some(key) => match key {
-            rltk::VirtualKeyCode::Left => try_move_player(-1, 0, &mut gs.ecs),
-            rltk::VirtualKeyCode::Right => try_move_player(1, 0, &mut gs.ecs),
-            rltk::VirtualKeyCode::Up => try_move_player(0, -1, &mut gs.ecs),
-            rltk::VirtualKeyCode::Down => try_move_player(0, 1, &mut gs.ecs),
+            rltk::VirtualKeyCode::H
+            | rltk::VirtualKeyCode::Numpad4
+            | rltk::VirtualKeyCode::Left => try_move_player(-1, 0, &mut gs.ecs),
+            rltk::VirtualKeyCode::L
+            | rltk::VirtualKeyCode::Numpad6
+            | rltk::VirtualKeyCode::Right => try_move_player(1, 0, &mut gs.ecs),
+            rltk::VirtualKeyCode::K | rltk::VirtualKeyCode::Numpad8 | rltk::VirtualKeyCode::Up => {
+                try_move_player(0, -1, &mut gs.ecs)
+            }
+            rltk::VirtualKeyCode::J
+            | rltk::VirtualKeyCode::Numpad2
+            | rltk::VirtualKeyCode::Down => try_move_player(0, 1, &mut gs.ecs),
+
             _ => {}
         },
     }
