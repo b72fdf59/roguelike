@@ -1,3 +1,4 @@
+use super::Rect;
 use rltk::{RandomNumberGenerator, Rltk, RGB};
 use std::cmp::{max, min};
 
@@ -7,50 +8,54 @@ pub enum TileType {
     Floor,
 }
 
-pub fn xy_idx(x: i32, y: i32) -> usize {
-    (y as usize * 80) + x as usize
+pub struct Map {
+    pub tiles: Vec<TileType>,
+    pub rooms: Vec<Rect>,
+    pub width: i32,
+    pub height: i32,
 }
 
-/// Makes a map with solid boundaries and 400 randomly placed walls. No guarantees that it won't
-/// look awful.
-pub fn new_map_test() -> Vec<TileType> {
-    let mut map = vec![TileType::Floor; 80 * 50];
-
-    for x in 0..80 {
-        map[xy_idx(x, 0)] = TileType::Wall;
-        map[xy_idx(x, 49)] = TileType::Wall;
+impl Map {
+    pub fn xy_idx(&self, x: i32, y: i32) -> usize {
+        (y as usize * self.width as usize) + x as usize
     }
 
-    for y in 0..50 {
-        map[xy_idx(0, y)] = TileType::Wall;
-        map[xy_idx(79, y)] = TileType::Wall;
+    pub fn apply_room_to_map(&mut self, room: &Rect) {
+        for y in room.y1 + 1..=room.y2 {
+            for x in room.x1 + 1..=room.x2 {
+                let idx = self.xy_idx(x, y);
+                self.tiles[idx] = TileType::Floor;
+            }
+        }
     }
 
-    // Now we'll randomly splat a bunch of walls. It won't be pretty, but it's a decent illustration.
-    // First, obtain the thread-local RNG:
-    let mut rng = RandomNumberGenerator::new();
-
-    // Next we choose how many walls to make
-    let num_walls = 400;
-    for _i in 0..num_walls {
-        // For each wall we want to randomly choose a position that is inside the arena
-        let x = rng.roll_dice(1, 79);
-        let y = rng.roll_dice(1, 49);
-
-        // We need to convert our X/Y coordinates into an array index
-        let idx = xy_idx(x, y);
-
-        // And finally, we change the tile at the index to a wall
-        map[idx] = TileType::Wall;
+    pub fn apply_horizontal_tunnel(&mut self, x1: i32, x2: i32, y: i32) {
+        for x in min(x1, x2)..=max(x1, x2) {
+            let idx = self.xy_idx(x, y);
+            if idx > 0 && idx < 80 * 50 {
+                self.tiles[idx as usize] = TileType::Floor;
+            }
+        }
     }
 
-    map
+    pub fn apply_vertical_tunnel(&mut self, y1: i32, y2: i32, x: i32) {
+        for y in min(y1, y2)..=max(y1, y2) {
+            let idx = self.xy_idx(x, y);
+            if idx > 0 && idx < 80 * 50 {
+                self.tiles[idx as usize] = TileType::Floor;
+            }
+        }
+    }
 }
 
-pub fn new_map_rooms_and_corridors() -> (Vec<super::Rect>, Vec<TileType>) {
-    let mut map = vec![TileType::Wall; 80 * 50];
+pub fn new_map_rooms_and_corridors() -> Map {
+    let mut map = Map {
+        tiles: vec![TileType::Wall; 80 * 50],
+        rooms: Vec::new(),
+        width: 80,
+        height: 50,
+    };
 
-    let mut rooms = Vec::new();
     const MAX_ROOMS: i32 = 30;
     const MIN_SIZE: i32 = 6;
     const MAX_SIZE: i32 = 10;
@@ -61,62 +66,37 @@ pub fn new_map_rooms_and_corridors() -> (Vec<super::Rect>, Vec<TileType>) {
         let h = rng.range(MIN_SIZE, MAX_SIZE);
         let x = rng.roll_dice(1, 80 - w - 1) - 1;
         let y = rng.roll_dice(1, 50 - h - 1) - 1;
-        let new_room = super::Rect::new(x, y, w, h);
-        if !rooms
+        let new_room = Rect::new(x, y, w, h);
+        if !map
+            .rooms
             .iter()
             .any(|other_room| new_room.intersect(other_room))
         {
-            apply_room_to_map(&new_room, &mut map);
+            map.apply_room_to_map(&new_room);
 
-            if !rooms.is_empty() {
+            if !map.rooms.is_empty() {
                 let (new_x, new_y) = new_room.center();
-                let (prev_x, prev_y) = rooms[rooms.len() - 1].center();
+                let (prev_x, prev_y) = map.rooms[map.rooms.len() - 1].center();
 
                 if rng.range(0, 2) == 1 {
-                    apply_horizontal_tunnel(&mut map, prev_x, new_x, prev_y);
-                    apply_vertical_tunnel(&mut map, prev_y, new_y, new_x);
+                    map.apply_horizontal_tunnel(prev_x, new_x, prev_y);
+                    map.apply_vertical_tunnel(prev_y, new_y, new_x);
                 } else {
-                    apply_vertical_tunnel(&mut map, prev_y, new_y, prev_x);
-                    apply_horizontal_tunnel(&mut map, prev_x, new_x, new_y);
+                    map.apply_vertical_tunnel(prev_y, new_y, prev_x);
+                    map.apply_horizontal_tunnel(prev_x, new_x, new_y);
                 }
             }
-            rooms.push(new_room);
+            map.rooms.push(new_room);
         }
     }
 
-    (rooms, map)
+    map
 }
 
-pub fn apply_room_to_map(room: &super::Rect, map: &mut [TileType]) {
-    for y in room.y1 + 1..=room.y2 {
-        for x in room.x1 + 1..=room.x2 {
-            map[xy_idx(x, y)] = TileType::Floor;
-        }
-    }
-}
-
-pub fn apply_horizontal_tunnel(map: &mut [TileType], x1: i32, x2: i32, y: i32) {
-    for x in min(x1, x2)..=max(x1, x2) {
-        let idx = xy_idx(x, y);
-        if idx > 0 && idx < 80 * 50 {
-            map[idx as usize] = TileType::Floor;
-        }
-    }
-}
-
-pub fn apply_vertical_tunnel(map: &mut [TileType], y1: i32, y2: i32, x: i32) {
-    for y in min(y1, y2)..=max(y1, y2) {
-        let idx = xy_idx(x, y);
-        if idx > 0 && idx < 80 * 50 {
-            map[idx as usize] = TileType::Floor;
-        }
-    }
-}
-
-pub fn draw_map(map: &[TileType], ctx: &mut Rltk) {
+pub fn draw_map(map: &Map, ctx: &mut Rltk) {
     let mut x = 0;
     let mut y = 0;
-    for tile in map.iter() {
+    for tile in map.tiles.iter() {
         match tile {
             TileType::Floor => {
                 ctx.set(
