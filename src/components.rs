@@ -20,3 +20,9 @@ pub struct LeftMover {}
 
 #[derive(Component, Debug)]
 pub struct Player {}
+
+#[derive(Component)]
+pub struct Viewshed {
+    pub visible_tiles: Vec<rltk::Point>,
+    pub range: i32,
+}
