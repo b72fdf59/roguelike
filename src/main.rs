@@ -77,6 +77,7 @@ fn main() {
     gs.ecs.register::<Player>();
     gs.ecs.register::<Viewshed>();
     gs.ecs.register::<Monster>();
+    gs.ecs.register::<Name>();
 
     let context = RltkBuilder::simple80x50()
         .with_title("Roguelike Tutorial")
@@ -103,15 +104,26 @@ fn main() {
             range: 8,
             dirty: true,
         })
+        .with(Name {
+            name: "Player".to_string(),
+        })
         .build();
 
     let mut rng = RandomNumberGenerator::new();
-    for room in map.rooms.iter().skip(1) {
+    for (i, room) in map.rooms.iter().skip(1).enumerate() {
         let (x, y) = room.center();
 
-        let glyph = match rng.roll_dice(1, 2) {
-            1 => rltk::to_cp437('g'), // goblin
-            _ => rltk::to_cp437('o'), // orc
+        let glyph: rltk::FontCharType;
+        let name: String;
+        match rng.roll_dice(1, 2) {
+            1 => {
+                glyph = rltk::to_cp437('g');
+                name = "Goblin".to_string();
+            }
+            _ => {
+                glyph = rltk::to_cp437('o');
+                name = "Orc".to_string();
+            }
         };
 
         gs.ecs
@@ -128,6 +140,9 @@ fn main() {
                 dirty: true,
             })
             .with(Monster {})
+            .with(Name {
+                name: format!("{} #{}", name, i),
+            })
             .build();
     }
 
