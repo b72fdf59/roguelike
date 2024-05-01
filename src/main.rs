@@ -1,4 +1,4 @@
-use rltk::{GameState, RandomNumberGenerator, Rltk, RltkBuilder, RGB};
+use rltk::{GameState, Point, RandomNumberGenerator, Rltk, RltkBuilder, RGB};
 use specs::prelude::*;
 
 mod components;
@@ -32,7 +32,6 @@ impl GameState for State {
             RunState::Running => {
                 self.run_systems();
                 self.state = RunState::Paused;
-                println!("Tick");
             }
             RunState::Paused => {
                 self.state = player_input(self, ctx);
@@ -133,6 +132,7 @@ fn main() {
     }
 
     gs.ecs.insert(map);
+    gs.ecs.insert(Point::new(player_x, player_y));
 
     let _ = rltk::main_loop::<State>(context, gs);
 }
