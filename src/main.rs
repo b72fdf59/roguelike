@@ -11,6 +11,7 @@ mod rect;
 pub use rect::*;
 mod visibility_system;
 pub use visibility_system::*;
+mod monster_ai_system;
 
 pub struct State {
     ecs: World,
@@ -41,7 +42,11 @@ impl GameState for State {
 impl State {
     fn run_systems(&mut self) {
         let mut vis = VisibilitySystem {};
+        let mut mob = monster_ai_system::MonsterAI {};
+
         vis.run_now(&self.ecs);
+        mob.run_now(&self.ecs);
+
         self.ecs.maintain()
     }
 }
@@ -53,6 +58,7 @@ fn main() {
     gs.ecs.register::<LeftMover>();
     gs.ecs.register::<Player>();
     gs.ecs.register::<Viewshed>();
+    gs.ecs.register::<Monster>();
 
     let context = RltkBuilder::simple80x50()
         .with_title("Roguelike Tutorial")
@@ -103,6 +109,7 @@ fn main() {
                 range: 8,
                 dirty: true,
             })
+            .with(Monster {})
             .build();
     }
 
