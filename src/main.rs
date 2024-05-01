@@ -1,4 +1,4 @@
-use rltk::{GameState, Rltk, RltkBuilder, RGB};
+use rltk::{GameState, RandomNumberGenerator, Rltk, RltkBuilder, RGB};
 use specs::prelude::*;
 
 mod components;
@@ -81,13 +81,20 @@ fn main() {
         })
         .build();
 
+    let mut rng = RandomNumberGenerator::new();
     for room in map.rooms.iter().skip(1) {
         let (x, y) = room.center();
+
+        let glyph = match rng.roll_dice(1, 2) {
+            1 => rltk::to_cp437('g'), // goblin
+            _ => rltk::to_cp437('o'), // orc
+        };
+
         gs.ecs
             .create_entity()
             .with(Position { x, y })
             .with(Renderable {
-                glyph: rltk::to_cp437('☺'),
+                glyph,
                 fg: RGB::named(rltk::RED),
                 bg: RGB::named(rltk::BLACK),
             })
