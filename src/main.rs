@@ -13,16 +13,31 @@ mod visibility_system;
 pub use visibility_system::*;
 mod monster_ai_system;
 
+#[derive(PartialEq, Copy, Clone)]
+pub enum RunState {
+    Paused,
+    Running,
+}
+
 pub struct State {
     ecs: World,
+    state: RunState,
 }
 
 impl GameState for State {
     fn tick(&mut self, ctx: &mut Rltk) {
         ctx.cls();
 
-        player_input(self, ctx);
-        self.run_systems();
+        match self.state {
+            RunState::Running => {
+                self.run_systems();
+                self.state = RunState::Paused;
+                println!("Tick");
+            }
+            RunState::Paused => {
+                self.state = player_input(self, ctx);
+            }
+        }
 
         draw_map(&self.ecs, ctx);
 
@@ -52,7 +67,11 @@ impl State {
 }
 
 fn main() {
-    let mut gs = State { ecs: World::new() };
+    let mut gs = State {
+        ecs: World::new(),
+        state: RunState::Running,
+    };
+
     gs.ecs.register::<Position>();
     gs.ecs.register::<Renderable>();
     gs.ecs.register::<LeftMover>();
